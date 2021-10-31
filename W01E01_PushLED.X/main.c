@@ -12,10 +12,10 @@
 #include <avr/io.h>
 int main(void) {
 
-    //LED pin set as output
+    // LED pin set as output
     PORTF.DIR = (PORTF.DIR | PIN5_bm);
     
-    //BUTTON pin set as input
+    // Button pin set as input
     PORTF.DIR = (PORTF.DIR & ~PIN6_bm);
 
     while (1) {
@@ -24,7 +24,7 @@ int main(void) {
         {
             PORTF.OUT |= PIN5_bm; //led is turned off
         }
-        // if the button is pressed
+        // If the button is pressed
         else
         {
             PORTF.OUT &= ~PIN5_bm; //led is turned on
