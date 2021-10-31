@@ -22,12 +22,12 @@ int main(void) {
         // If button is not pressed
         if (PORTF.IN & PIN6_bm)
         {
-            PORTF.OUT |= PIN5_bm; //led is turned off
+            PORTF.OUT |= PIN5_bm; // LED is turned off
         }
         // If the button is pressed
         else
         {
-            PORTF.OUT &= ~PIN5_bm; //led is turned on
+            PORTF.OUT &= ~PIN5_bm; // LED is turned on
         }
     }
 }
