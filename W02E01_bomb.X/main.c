@@ -20,8 +20,8 @@ uint8_t g_running = 1;
 
 int main(void)
 {
-    // 7-segment LED pins set as output
-    VPORTC.DIR = 0b11111111;
+    // all 7-segment LED pins set as output
+    VPORTC.DIR = 0xFF;
     
     // Setting red wire as input
     PORTA.DIRCLR = PIN4_bm;
@@ -42,7 +42,7 @@ int main(void)
     // Enabling interrupts
     sei();
     
-    // Displaying numbers from 9 to 0, with 1s delay
+    // Displaying numbers from 9 to 1, with 1s delay
     for(uint8_t i = 9; i>0; i--)
     {
         // Displaying current number
