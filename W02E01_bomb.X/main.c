@@ -20,7 +20,7 @@ uint8_t g_running = 1;
 
 int main(void)
 {
-    // all 7-segment LED pins set as output
+    // All 7-segment LED pins set as output
     VPORTC.DIR = 0xFF;
     
     // Setting red wire as input
@@ -29,8 +29,8 @@ int main(void)
     // Trigger interrupts on rising edge on the red wire pin
     PORTA.PIN4CTRL = PORT_ISC_RISING_gc; 
     
-    // Array of LED states used to display numbers from 0-9, additionally index
-    // 10 is used for the off-state.
+    // Array of LED states used to display numbers from 0-9,
+    // additionally index 10 is used for the off-state.
     uint8_t segment_numbers[] =
     {
         0b00111111, 0b00000110, 0b01011011, 
