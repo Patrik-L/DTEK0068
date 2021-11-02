@@ -6,7 +6,7 @@
  * When wire at PA4 is disconnected, the countdown is stopped.
  * If timer reaches 0 display starts blinking.
  *
- * Created on October 11, 2021
+ * Created on November 2, 2021
  */
 
 
