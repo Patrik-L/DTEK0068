@@ -51,7 +51,9 @@ int main(void)
         
         // Halting the program if the red wire has been disconnected
         if(!g_running){
-            return;
+            while(1)
+            {
+            }
         }
     };
     
