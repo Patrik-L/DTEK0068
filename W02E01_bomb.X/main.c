@@ -50,7 +50,8 @@ int main(void)
         _delay_ms(1000);
         
         // Halting the program if the red wire has been disconnected
-        if(!g_running){
+        if(!g_running)
+        {
             while(1)
             {
             }
