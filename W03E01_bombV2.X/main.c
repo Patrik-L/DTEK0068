@@ -74,7 +74,8 @@ int main(void)
     // Setting red wire as input
     PORTA.DIRCLR = PIN4_bm;
     
-    // Trigger interrupts on rising edge on the red wire pin
+    // Trigger interrupts on rising edge on the red wire pin and enable
+    // pull up resistor
     PORTA.PIN4CTRL = PORT_PULLUPEN_bm | PORT_ISC_RISING_gc;
     
     // Initialize RTC timer's PIT interrupt function
@@ -135,14 +136,16 @@ ISR(RTC_PIT_vect)
     // Clear interrupt flag 
     RTC.PITINTFLAGS = RTC_PI_bm; 
 
-    static uint8_t ISR_count = 0;
-    ISR_count += 1;
+    static uint8_t PIT_count = 0;
+    PIT_count += 1;
     
-    //Increment g_clockticks every 8:th clock-tick
-    if(ISR_count == 7)
+    // Increment g_clockticks every 8:th clock-tick.
+    // We also stop incrementing g_clockticks if countdown reaches 0, since
+    // it would otherwise overflow after 255 seconds
+    if(PIT_count == 7 && g_clockticks < 9)
     {
         g_clockticks += 1;
-        ISR_count = 0;
+        PIT_count = 0;
     }
     
     // Checks if 9 seconds have passed
