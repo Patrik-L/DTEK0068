@@ -1,31 +1,32 @@
 /*
  * File:   main.c
  * Author: Patrik Larsen <pslars@utu.fi>
- * Exercise: W03E01 - BombV2
- * Description: 7-segment display, that counts down to 0.
- * When wire at PA4 is disconnected, the countdown is stopped.
- * If timer reaches 0 display starts blinking.
- * 
- * The code has been re-factored to make use of timers and sleep.
- * 
- * Note: This program uses the same wiring as last weeks submission, with
- * the exception of the added transistor.
+ * Exercise: W04E01 - Dino Player
+ * Description: Program to automatically play the dino game accessible
+ * on chromium based browsers at "chrome://dino".
+ * An onboard potentiometer is used to fine-tune the activation threshold
+ * of a photoresistor. Said photoresistor is to be placed over the monitor
+ * to detect the dark pixels of approaching cacti.
  *
- * Created on November 11, 2021
+ * Created on November 16, 2021
  */
 
 
 #include <avr/io.h>
 #include <avr/cpufunc.h>  // for ccp_write_io()
 
-#define F_CPU  3333333   // 3.33 MHz Clock frequency 
-#include <util/delay.h>
+#include <avr/interrupt.h>
 
-// Global variable tracking that red wire hasn't been disconnected
-uint8_t volatile g_running = 1;
+// Servo PWM constants
+#define SERVO_PWM_PERIOD        (0x1046) 
+#define SERVO_PWM_DUTY_NEUTRAL  (0x0138) 
+#define SERVO_PWM_DUTY_MAX      (0x01A0) 
 
-// Global variable expressing how many seconds have elapsed
-uint8_t volatile g_clockticks = 0;
+// Used to inform ISR that we want to press space bar 
+uint8_t volatile g_pressing = 0;
+
+// Used to inform ISR that the servo is returning from a press
+uint8_t volatile g_returning = 0;
 
 void rtc_init(void)
 {
@@ -52,19 +53,23 @@ void rtc_init(void)
     // Wait for the clock to stabilize 
     while (RTC.STATUS > 0);
     
+    // Set period to  Enable OVF interrupt8192 cycles (1/8 second)
+    RTC.PER = 4096;
+    
     // Configure RTC module 
     // Select 32.768 kHz external oscillator 
     RTC.CLKSEL = RTC_CLKSEL_TOSC32K_gc;
-    
-    // Enable Periodic Interrupt 
-    RTC.PITINTCTRL = RTC_PI_bm;
-    
-    //Set period to 4096 cycles (1/8 second) and enable PIT function 
-    RTC.PITCTRLA = RTC_PERIOD_CYC4096_gc | RTC_PITEN_bm;
+    RTC.INTCTRL |= RTC_OVF_bm; // Enable OVF interrupt
+    RTC.CTRLA = RTC_RTCEN_bm; //Enable RTC
 }
+
 
 int main(void)
 {
+    
+    // Enabling interrupts
+    sei();
+    
     // All 7-segment LED pins set as output
     VPORTC.DIR = 0xFF;
     
@@ -72,27 +77,42 @@ int main(void)
     PORTF.DIRSET = PIN5_bm;
     PORTF.OUTSET = PIN5_bm;
     
-    // Set PF4 as input 
+    // potentiometer
+    // Set potentiometer as input 
     PORTF.DIRCLR = PIN4_bm; 
     // No pull-up, no invert, disable input buffer 
     PORTF.PIN4CTRL = PORT_ISC_INPUT_DISABLE_gc; 
     // Enable (power up) ADC (10-bit resolution is default) 
     ADC0.CTRLA |= ADC_ENABLE_bm;
     
-    
-    //LIGHT
-    // Set PE0 as input 
+    // ldr
+    // Set ldr as input 
     PORTE.DIRCLR = PIN0_bm; 
     // No pull-up, no invert, disable input buffer 
     PORTE.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc; 
     
+    // Setting internal voltage reference that is used with ldr
+    VREF.CTRLA |= VREF_ADC0REFSEL_2V5_gc; // Set internal voltage ref to 2.5V
     
-    //Servo
-    
-    PORTB.DIRSET = PIN2_bm;
-    
-    
-    // Array of LED states used to display numbers from 0-9 + A.
+    //Servo 
+    // Route TCA0 PWM waveform to PORTB 
+    PORTMUX.TCAROUTEA |= PORTMUX_TCA0_PORTB_gc; 
+    // Set 0-WO2 (PB2) as digital output 
+    PORTB.DIRSET = PIN2_bm; 
+    // Set TCA0 prescaler value to 16 (~208 kHz) 
+    TCA0.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV16_gc; 
+    // Set single-slop PWM generation mode 
+    TCA0.SINGLE.CTRLB |= TCA_SINGLE_WGMODE_SINGLESLOPE_gc; 
+    // Using double-buffering, set PWM period (20 ms) 
+    TCA0.SINGLE.PERBUF = SERVO_PWM_PERIOD; 
+    // Set initial servo arm position as neutral (0 deg) 
+    TCA0.SINGLE.CMP2BUF = SERVO_PWM_DUTY_NEUTRAL; 
+    // Enable Compare Channel 2 
+    TCA0.SINGLE.CTRLB |= TCA_SINGLE_CMP2EN_bm; 
+    // Enable TCA0 peripheral 
+    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm; 
+
+    // Array of LED states used to display numbers from 0-9 + A for 10.
     uint8_t segment_numbers[] =
     {
         0b00111111, 0b00000110, 0b01011011, 
@@ -101,76 +121,97 @@ int main(void)
         0b01100111, 0b01110111
     };
     
+    // Initialize RTC timer
+    rtc_init();
     
     uint16_t pot_reading = 0;
-    
-    uint16_t ldr_reading = 0;
-    
-    uint8_t first_time = 1;
-    
+    uint16_t ldr_reading = 0; 
     while(1)
     {
-        if(first_time == 1){
-            ;
-        }
 
-        ADC0.MUXPOS = ADC_MUXPOS_AIN8_gc;
-        // Use Vdd as reference voltage and set prescaler of 16 
-        ADC0.CTRLC |= ADC_PRESC_DIV16_gc | ADC_REFSEL_VDDREF_gc;
+        change_mux(ADC_MUXPOS_AIN8_gc);
+        ldr_reading = ADC0.RES/100; // Getting value of photoresistor
         
-        // Start conversion (bit cleared when conversion is done) 
-        ADC0.COMMAND = ADC_STCONV_bm;
+        change_mux(ADC_MUXPOS_AIN14_gc);
+        pot_reading = ADC0.RES/100; // Getting value of potentiometer
+               
+        uint8_t number_to_display = 10;   
+        
+        // Clamping reading to 10
+        if(pot_reading <= 10)
+        {
+            number_to_display = pot_reading;
+        };
 
-        while (!(ADC0.INTFLAGS & ADC_RESRDY_bm)) 
-        { 
-            ;
-        }
-        
-        ldr_reading = floor(ADC0.RES); 
-        
-        
-        
-        ADC0.MUXPOS = ADC_MUXPOS_AIN14_gc;
-        ADC0.CTRLC |= ADC_PRESC_DIV16_gc | ADC_REFSEL_VDDREF_gc;
-        
-        // Start conversion (bit cleared when conversion is done) 
-        ADC0.COMMAND = ADC_STCONV_bm;
-
-        while (!(ADC0.INTFLAGS & ADC_RESRDY_bm)) 
-        { 
-            ;
-        }
-        
-        pot_reading = floor(ADC0.RES / 10);   
-            
-          
-          
-         uint8_t number_to_display = 10;
-         
-         if(ldr_reading/pot_reading <= 10)
-         {
-             number_to_display = ldr_reading/pot_reading;
-         };
-         
-         if(number_to_display == 10) {
-             press_spacebar();
-         } 
+        // If threshold has been met, issue press
+        if(ldr_reading > pot_reading)
+        {
+            press_spacebar();
+        } 
              
         VPORTC.OUT = segment_numbers[number_to_display]; 
-        
         ADC0.INTFLAGS = ADC_RESRDY_bm; 
     };
 }
 
-void press_spacebar(){ 
-    for(uint16_t i = 0; i<100; i++)
+void press_spacebar()
+{ 
+    // Tell ISR that the next cycle should be a press event
+    g_pressing = 1;
+    
+    // Resetting RTC, so that press happens after 1/8 second
+    RTC.PER = 4096;
+}
+
+// Changes adc muxpos, sets correct voltage ref and
+// waits for the conversion to finish.
+// Expects only ADC_MUXPOS_AIN8_gc and ADC_PRESC_DIV16_gc as input
+void change_mux(uint8_t muxpos)
+{
+    ADC0.MUXPOS = muxpos;
+    
+    // Changing voltage ref depending on which port we're reading
+    if(muxpos == ADC_MUXPOS_AIN8_gc)
     {
-         PORTB.OUTTGL = PIN2_bm;
-         _delay_ms(1);
-    }                                                                                                                                                                                                                                                                          
-    for(uint16_t i = 0; i<100; i++)
+        ADC0.CTRLC |= ADC_PRESC_DIV16_gc |  ADC_REFSEL_INTREF_gc;
+    } else
     {
-         PORTB.OUTTGL = PIN2_bm;
-         _delay_ms(2);
+        ADC0.CTRLC |= ADC_PRESC_DIV16_gc | ADC_REFSEL_VDDREF_gc;
     }
+
+    // Start conversion (bit cleared when conversion is done) 
+    ADC0.COMMAND = ADC_STCONV_bm;
+
+    // Waiting for adc to get a reading
+    while (!(ADC0.INTFLAGS & ADC_RESRDY_bm)) 
+    { 
+        ;
+    }
+    return;
+}
+
+ISR(RTC_CNT_vect)
+{ 
+    // Setting INTFLAGS
+	RTC.INTFLAGS |= RTC_OVF_bm;
+    
+    // Check if press has been requested and that we aren't returning
+    if(g_pressing && !g_returning)
+    {
+        // Sets servo to move to max position
+        TCA0.SINGLE.CMP2BUF = SERVO_PWM_DUTY_MAX;
+        
+        // Informs that next RTC event should be a return
+        g_returning = 1;
+        
+        // Press event has completed when the next RTC event fires.
+        g_pressing = 0;
+    } else if (g_returning) // If we're in the pressed position
+    {
+        // Sets servo to neutral position
+        TCA0.SINGLE.CMP2BUF = SERVO_PWM_DUTY_NEUTRAL; 
+        
+        // Return event has completed when the next RTC event fires.
+        g_returning = 0;
+    }   
 }
