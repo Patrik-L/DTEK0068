@@ -1,20 +1,20 @@
 /*
- * File:   main.c
- * Author: Patrik Larsen <pslars@utu.fi>
- * Exercise: W06E01 - Digit Display
- * Description: This project implements FreeRTOS and uses three different
- * tasks to implement serial communication and the ability to change the
- * value of the seven-segment display from a host device
- *
- * Created on December 04, 2021
- */
-    
- #include <avr/io.h> 
- #include "FreeRTOS.h" 
- #include "clock_config.h" 
- #include "task.h" 
- #include"queue.h"
- #include <string.h>
+* File:   main.c
+* Author: Patrik Larsen <pslars@utu.fi>
+* Exercise: W06E01 - Digit Display
+* Description: This project implements FreeRTOS and uses three different
+* tasks to implement serial communication and the ability to change the
+* value of the seven-segment display from a host device
+*
+* Created on December 04, 2021
+*/
+
+#include <avr/io.h> 
+#include "FreeRTOS.h" 
+#include "clock_config.h" 
+#include "task.h" 
+#include"queue.h"
+#include <string.h>
 
 // Defining constants that are required for serial communication
 #define F_CPU 3333333
@@ -27,26 +27,26 @@ static QueueHandle_t num_queue;
 static const uint8_t message_max_length = 20;
 static QueueHandle_t message_queue;
 
- void DriveLED(void* parameter) 
- { 
-     // Array of LED states used to display numbers from 0-9 + E for 10.
+void DriveLED(void* parameter) 
+{ 
+    // Array of LED states used to display numbers from 0-9 + E for 10.
     uint8_t segment_numbers[] =
-   {
-       0b00111111, 0b00000110, 0b01011011, 
-       0b01001111, 0b01100110, 0b01101101, 
-       0b01111101, 0b00000111, 0b01111111, 
-       0b01100111, 0b01111001
-   };
+    {
+        0b00111111, 0b00000110, 0b01011011, 
+        0b01001111, 0b01100110, 0b01101101, 
+        0b01111101, 0b00000111, 0b01111111, 
+        0b01100111, 0b01111001
+    };
 
     // All 7-segment LED pins set as output
     VPORTC.DIR = 0xFF;
-     
+
     // Turning on 7-segment LEDs
     PORTF.DIRSET = PIN5_bm;
     PORTF.OUTSET = PIN5_bm;
 
     uint8_t num_to_display = 0;
-    
+
     // This task will run indefinitely 
     for (;;) 
     {
@@ -57,13 +57,13 @@ static QueueHandle_t message_queue;
             VPORTC.OUT = segment_numbers[num_to_display];
         }
     }
-    
+
     // vTaskDelete() call just-in-case 
     vTaskDelete(NULL); 
- }
+}
 
- // Task that reads serial and sends appropriate
- // messages to message_queue and num_queue
+// Task that reads serial and sends appropriate
+// messages to message_queue and num_queue
 void UARTRead(void* parameter)
 {
     // Function that reads each character received.
@@ -77,33 +77,35 @@ void UARTRead(void* parameter)
         return USART0.RXDATAL;
     }
 
-   for (;;) 
+    // Infinite loop
+    for (;;) 
     { 
-       uint8_t read_char = USART0_readChar();
-       uint8_t segment_num;
-       
-       // If the character is a number between 0-9
-       // 48 is a standard offset used in ASCII to get
-       // the value of the number characters
-       if(read_char >= (48) && read_char <= (48+9)){
-           segment_num = read_char - 48;    
-           
-           // Success message, \r\n signifies line break and then moving
-           // the cursor to the beginning of the line
-           const char *success_message="That is a valid digit!\r\n";
-           xQueueSend(message_queue, (void *) &success_message, 10);
+        uint8_t read_char = USART0_readChar();
+        uint8_t segment_num;
+        
+        // If the character is a number between 0-9
+        // 48 is a standard offset used in ASCII to get
+        // the value of the number characters
+        if((read_char >= 48) && (read_char <= 48+9))
+        {
+            segment_num = read_char - 48;    
+            
+            // Success message, \r\n signifies line break and then moving
+            // the cursor to the beginning of the line
+            const char *success_message="That's a valid digit!\r\n";
+            xQueueSend(message_queue, (void *) &success_message, 10);
 
-           xQueueSend(num_queue, (void *) &segment_num, 10);
-       } else // If we've inputted a character that is not 0-9
-       {
-           // Error message, \r\n signifies line break and then moving
-           // the cursor to the beginning of the line
-           const char *error_message="Error! Not a valid digit.\r\n";
-           xQueueSend(message_queue, (void *) &error_message, 10);
+            xQueueSend(num_queue, (void *) &segment_num, 10);
+        } else // If we've inputted a character that is not 0-9
+        {
+            // Error message, \r\n signifies line break and then moving
+            // the cursor to the beginning of the line
+            const char *error_message="Error! Not a valid digit.\r\n";
+            xQueueSend(message_queue, (void *) &error_message, 10);
 
-           segment_num = 10;
-           xQueueSend(num_queue, (void *) &segment_num, 10);
-       }
+            segment_num = 10;
+            xQueueSend(num_queue, (void *) &segment_num, 10);
+        }
     }
     // vTaskDelete() call just-in-case 
     vTaskDelete(NULL); 
@@ -111,8 +113,7 @@ void UARTRead(void* parameter)
 
 // Task that writes the values from message_queue to serial
 void UARTWrite(void* parameter)
- {
-    
+{
     // Sends a single character to serial.
     // Taken directly from microchip documentation
     void USART0_sendChar(char c)
@@ -136,71 +137,73 @@ void UARTWrite(void* parameter)
     
     char *message_string = "";
     
+    // Infinite loop
     for (;;) 
-     { 
+    { 
         if(xQueueReceive(message_queue, (void *) &message_string, 0) == pdTRUE)
-         {
+        {
             USART0_sendString(message_string);
-         }
-     }
+        }
+    }
     // vTaskDelete() call just-in-case 
     vTaskDelete(NULL); 
- }
+}
   
   
- int main(void) 
- { 
-     
-     // Creating number queue, which is in charge of passing numbers
-     // to the 7-segment display
-     num_queue = xQueueCreate(num_queue_len, sizeof(uint8_t));
-     
-     // Creating message queue, which is in charge of sending messages
-     // to serial
-     message_queue = xQueueCreate(message_max_length, sizeof(char)); //20 char max
-     
-   
-     // Creating the task that is used for updating the 7-segment display 
-     xTaskCreate( 
-         DriveLED, 
-         "drive_led", 
-         configMINIMAL_STACK_SIZE, 
-         NULL, 
-         tskIDLE_PRIORITY, 
-         NULL 
-     );
-     
-    //setting up UART
+int main(void) 
+{ 
+    
+    // Creating number queue, which is in charge of passing numbers
+    // to the 7-segment display
+    num_queue = xQueueCreate(num_queue_len, sizeof(uint8_t));
+    
+    // Creating message queue, which is in charge of sending messages
+    // to serial
+    message_queue = xQueueCreate(message_max_length, sizeof(char)); //20 char max
+    
+
+    // Creating the task that is used for updating the 7-segment display 
+    xTaskCreate( 
+        DriveLED, 
+        "drive_led", 
+        configMINIMAL_STACK_SIZE, 
+        NULL, 
+        tskIDLE_PRIORITY, 
+        NULL 
+    );
+    
+    // Setting up UART
+    // Taken  from microchip documentation
     PORTA.DIR &= ~PIN1_bm;
     PORTA.DIR |= PIN0_bm;
     USART0.BAUD = (uint16_t)USART0_BAUD_RATE(9600);
     USART0.CTRLB |= USART_TXEN_bm;
     USART0.CTRLB |= USART_RXEN_bm;
-     
+
     // Creating the task that is used for reading serial
     // and sending the appropriate messages to message_queue and num_queue
-     xTaskCreate( 
-         UARTRead, 
-         "UART_read", 
-         configMINIMAL_STACK_SIZE, 
-         NULL, 
-         tskIDLE_PRIORITY, 
-         NULL 
-     );
-     
+    xTaskCreate( 
+        UARTRead, 
+        "UART_read", 
+        configMINIMAL_STACK_SIZE, 
+        NULL, 
+        tskIDLE_PRIORITY, 
+        NULL 
+    );
+    
     // Creating the task that is used for outputting messages to serial
-     xTaskCreate( 
-         UARTWrite, 
-         "UART_write", 
-         configMINIMAL_STACK_SIZE, 
-         NULL, 
-         tskIDLE_PRIORITY, 
-         NULL 
-     );
-  
-     // Start the scheduler 
-     vTaskStartScheduler(); 
-  
-     // Scheduler will not return 
-     return 0; 
- }
+    xTaskCreate( 
+        UARTWrite,
+        "UART_write",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        tskIDLE_PRIORITY,
+        NULL
+    );
+
+    // Start the scheduler 
+    vTaskStartScheduler(); 
+
+    // Scheduler will not return 
+    return 0; 
+}
