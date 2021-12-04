@@ -1,19 +1,14 @@
 /*
  * File:   main.c
  * Author: Patrik Larsen <pslars@utu.fi>
- * Exercise: W04E01 - Dino Player
- * Description: Program to automatically play the dino game accessible
- * on chromium based browsers at "chrome://dino".
- * An onboard potentiometer is used to fine-tune the activation threshold
- * of a photoresistor. Said photoresistor is to be placed over the monitor
- * to detect the dark pixels of approaching cacti.
+ * Exercise: W06E01 - Digit Display
+ * Description: This project implements FreeRTOS and uses three different
+ * tasks to implement serial communication and the ability to change the
+ * value of the seven-segment display from a host device
  *
- * Created on November 16, 2021
+ * Created on December 04, 2021
  */
     
-  /* 
-  * Minimal FreeRTOS application - Surprise! It blinks a LED! 
-  */  
  #include <avr/io.h> 
  #include "FreeRTOS.h" 
  #include "clock_config.h" 
@@ -21,17 +16,16 @@
  #include"queue.h"
  #include <string.h>
 
+// Defining constants that are required for serial communication
 #define F_CPU 3333333
 #define USART0_BAUD_RATE(BAUD_RATE) ((float)(F_CPU * 64 / (16 * (float)BAUD_RATE)) + 0.5)
-  
- #define BLINK_DELAY    0  // milliseconds 
 
+// Constants for num_queue and message_queue
 static const uint8_t num_queue_len = 5;
 static QueueHandle_t num_queue;
 
 static const uint8_t message_max_length = 20;
 static QueueHandle_t message_queue;
-
 
  void DriveLED(void* parameter) 
  { 
@@ -47,31 +41,33 @@ static QueueHandle_t message_queue;
     // All 7-segment LED pins set as output
     VPORTC.DIR = 0xFF;
      
-    // Turning on 7-segment LED
+    // Turning on 7-segment LEDs
     PORTF.DIRSET = PIN5_bm;
     PORTF.OUTSET = PIN5_bm;
-       
-     
-     
-     PORTF.DIRSET = PIN5_bm;                      // PF5 (LED) as output 
-     
-     uint8_t num_to_display = 0;
-     // This task will run indefinitely 
-     for (;;) 
-     {
-         if(xQueueReceive(num_queue, (void *) &num_to_display, 0) == pdTRUE);
-         {
-             VPORTC.OUT = segment_numbers[num_to_display];  
-         }
-         vTaskDelay(pdMS_TO_TICKS(BLINK_DELAY));  // Wait n milliseconds 
-     } 
-     // Above loop will not end, but as a practice, tasks should always include 
-     // a vTaskDelete() call just-in-case 
-     vTaskDelete(NULL); 
+
+    uint8_t num_to_display = 0;
+    
+    // This task will run indefinitely 
+    for (;;) 
+    {
+        // Continuously listening to num_queue
+        // and displaying the number on the display
+        if(xQueueReceive(num_queue, (void *) &num_to_display, 0) == pdTRUE)
+        {
+            VPORTC.OUT = segment_numbers[num_to_display];
+        }
+    }
+    
+    // vTaskDelete() call just-in-case 
+    vTaskDelete(NULL); 
  }
 
-  void UARTRead(void* parameter)
- {
+ // Task that reads serial and sends appropriate
+ // messages to message_queue and num_queue
+void UARTRead(void* parameter)
+{
+    // Function that reads each character received.
+    // Taken directly from microchips documentation.
     uint8_t USART0_readChar()
     {
         while (!(USART0.STATUS & USART_RXCIF_bm))
@@ -80,41 +76,45 @@ static QueueHandle_t message_queue;
         }
         return USART0.RXDATAL;
     }
-    
-    for (;;) 
-     { 
-        uint8_t read_char = USART0_readChar();
-        
-        
-        //Send Num
-        uint8_t num;
-        if(read_char >= (48) && read_char <= (48+9)){
-            num = read_char - 48;    
-            
-            const char *success_message="That is indeed a digit!\r\n";
-            xQueueSend(message_queue, (void *) &success_message, 10);
-            
-            xQueueSend(num_queue, (void *) &num, 10);
-        } else
-        {
-            const char *error_message="Error! Not a valid digit.\r\n";
-            xQueueSend(message_queue, (void *) &error_message, 10);
-            
-            num = 10;
-            xQueueSend(num_queue, (void *) &num, 10);
-        }
-        
-        
-        vTaskDelay(pdMS_TO_TICKS(BLINK_DELAY));  // Wait n milliseconds 
-     }
-    // Above loop will not end, but as a practice, tasks should always include 
-    // a vTaskDelete() call just-in-case 
+
+   for (;;) 
+    { 
+       uint8_t read_char = USART0_readChar();
+       uint8_t segment_num;
+       
+       // If the character is a number between 0-9
+       // 48 is a standard offset used in ASCII to get
+       // the value of the number characters
+       if(read_char >= (48) && read_char <= (48+9)){
+           segment_num = read_char - 48;    
+           
+           // Success message, \r\n signifies line break and then moving
+           // the cursor to the beginning of the line
+           const char *success_message="That is a valid digit!\r\n";
+           xQueueSend(message_queue, (void *) &success_message, 10);
+
+           xQueueSend(num_queue, (void *) &segment_num, 10);
+       } else // If we've inputted a character that is not 0-9
+       {
+           // Error message, \r\n signifies line break and then moving
+           // the cursor to the beginning of the line
+           const char *error_message="Error! Not a valid digit.\r\n";
+           xQueueSend(message_queue, (void *) &error_message, 10);
+
+           segment_num = 10;
+           xQueueSend(num_queue, (void *) &segment_num, 10);
+       }
+    }
+    // vTaskDelete() call just-in-case 
     vTaskDelete(NULL); 
- }
-  
-    void UARTWrite(void* parameter)
+}
+
+// Task that writes the values from message_queue to serial
+void UARTWrite(void* parameter)
  {
-      
+    
+    // Sends a single character to serial.
+    // Taken directly from microchip documentation
     void USART0_sendChar(char c)
     {
         while (!(USART0.STATUS & USART_DREIF_bm))
@@ -124,6 +124,8 @@ static QueueHandle_t message_queue;
         USART0.TXDATAL = c;
     }
     
+    // Sends string to serial using sendChar.
+    // Taken directly from microchip documentation
     void USART0_sendString(char *str)
     {
         for(size_t i = 0; i < strlen(str); i++)
@@ -132,7 +134,7 @@ static QueueHandle_t message_queue;
         }
     }
     
-    char *message_string = " ";
+    char *message_string = "";
     
     for (;;) 
      { 
@@ -140,10 +142,8 @@ static QueueHandle_t message_queue;
          {
             USART0_sendString(message_string);
          }
-         vTaskDelay(pdMS_TO_TICKS(BLINK_DELAY));  // Wait n milliseconds 
      }
-    // Above loop will not end, but as a practice, tasks should always include 
-    // a vTaskDelete() call just-in-case 
+    // vTaskDelete() call just-in-case 
     vTaskDelete(NULL); 
  }
   
@@ -151,14 +151,16 @@ static QueueHandle_t message_queue;
  int main(void) 
  { 
      
-     // Creating number queue
+     // Creating number queue, which is in charge of passing numbers
+     // to the 7-segment display
      num_queue = xQueueCreate(num_queue_len, sizeof(uint8_t));
      
-     // Creating queue
+     // Creating message queue, which is in charge of sending messages
+     // to serial
      message_queue = xQueueCreate(message_max_length, sizeof(char)); //20 char max
      
    
-     // Create task 
+     // Creating the task that is used for updating the 7-segment display 
      xTaskCreate( 
          DriveLED, 
          "drive_led", 
@@ -175,7 +177,8 @@ static QueueHandle_t message_queue;
     USART0.CTRLB |= USART_TXEN_bm;
     USART0.CTRLB |= USART_RXEN_bm;
      
-     // Create task 
+    // Creating the task that is used for reading serial
+    // and sending the appropriate messages to message_queue and num_queue
      xTaskCreate( 
          UARTRead, 
          "UART_read", 
@@ -185,7 +188,7 @@ static QueueHandle_t message_queue;
          NULL 
      );
      
-          // Create task 
+    // Creating the task that is used for outputting messages to serial
      xTaskCreate( 
          UARTWrite, 
          "UART_write", 
