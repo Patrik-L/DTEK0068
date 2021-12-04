@@ -93,7 +93,8 @@ For other frequency values, update clock_config.h with your own settings. */
 #define INCLUDE_xTaskGetHandle 0
 #define INCLUDE_xTaskResumeFromISR 0
 #define pdMS_TO_TICKS(xTimeInMs) \
-    ((TickType_t)(((uint32_t)(xTimeInMs) * (uint32_t)configTICK_RATE_HZ) / (uint32_t)1000))
+    ((TickType_t)(((uint32_t)(xTimeInMs) * (uint32_t)configTICK_RATE_HZ) \
+    / (uint32_t)1000))
 #define recmuRECURSIVE_MUTEX_TEST_TASK_STACK_SIZE \
     ( configMINIMAL_STACK_SIZE * 2 )
 #endif /* FREERTOSCONFIG_H */

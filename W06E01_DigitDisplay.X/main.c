@@ -18,7 +18,8 @@
 
 // Defining constants that are required for serial communication
 #define F_CPU 3333333
-#define USART0_BAUD_RATE(BAUD_RATE) ((float)(F_CPU * 64 / (16 * (float)BAUD_RATE)) + 0.5)
+#define USART0_BAUD_RATE(BAUD_RATE) \
+((float)(F_CPU * 64 / (16 * (float)BAUD_RATE)) + 0.5)
 
 // Constants for num_queue and message_queue
 static const uint8_t num_queue_len = 5;
@@ -27,7 +28,7 @@ static QueueHandle_t num_queue;
 static const uint8_t message_max_length = 20;
 static QueueHandle_t message_queue;
 
-void DriveLED(void* parameter) 
+void drive_led(void* parameter) 
 { 
     // Array of LED states used to display numbers from 0-9 + E for 10.
     uint8_t segment_numbers[] =
@@ -64,11 +65,11 @@ void DriveLED(void* parameter)
 
 // Task that reads serial and sends appropriate
 // messages to message_queue and num_queue
-void UARTRead(void* parameter)
+void uart_read(void* parameter)
 {
     // Function that reads each character received.
     // Taken directly from microchips documentation.
-    uint8_t USART0_readChar()
+    uint8_t usart0_read_char()
     {
         while (!(USART0.STATUS & USART_RXCIF_bm))
         {
@@ -80,7 +81,7 @@ void UARTRead(void* parameter)
     // Infinite loop
     for (;;) 
     { 
-        uint8_t read_char = USART0_readChar();
+        uint8_t read_char = usart0_read_char();
         uint8_t segment_num;
         
         // If the character is a number between 0-9
@@ -112,11 +113,11 @@ void UARTRead(void* parameter)
 }
 
 // Task that writes the values from message_queue to serial
-void UARTWrite(void* parameter)
+void uart_write(void* parameter)
 {
     // Sends a single character to serial.
     // Taken directly from microchip documentation
-    void USART0_sendChar(char c)
+    void usart0_send_char(char c)
     {
         while (!(USART0.STATUS & USART_DREIF_bm))
         {
@@ -127,11 +128,11 @@ void UARTWrite(void* parameter)
     
     // Sends string to serial using sendChar.
     // Taken directly from microchip documentation
-    void USART0_sendString(char *str)
+    void usart0_send_string(char *str)
     {
         for(size_t i = 0; i < strlen(str); i++)
         {
-            USART0_sendChar(str[i]);
+            usart0_send_char(str[i]);
         }
     }
     
@@ -142,7 +143,7 @@ void UARTWrite(void* parameter)
     { 
         if(xQueueReceive(message_queue, (void *) &message_string, 0) == pdTRUE)
         {
-            USART0_sendString(message_string);
+            usart0_send_string(message_string);
         }
     }
     // vTaskDelete() call just-in-case 
@@ -159,12 +160,12 @@ int main(void)
     
     // Creating message queue, which is in charge of sending messages
     // to serial
-    message_queue = xQueueCreate(message_max_length, sizeof(char)); //20 char max
+    message_queue = xQueueCreate(message_max_length, sizeof(char));
     
 
     // Creating the task that is used for updating the 7-segment display 
     xTaskCreate( 
-        DriveLED, 
+        drive_led, 
         "drive_led", 
         configMINIMAL_STACK_SIZE, 
         NULL, 
@@ -183,8 +184,8 @@ int main(void)
     // Creating the task that is used for reading serial
     // and sending the appropriate messages to message_queue and num_queue
     xTaskCreate( 
-        UARTRead, 
-        "UART_read", 
+        uart_read, 
+        "uart_read", 
         configMINIMAL_STACK_SIZE, 
         NULL, 
         tskIDLE_PRIORITY, 
@@ -193,8 +194,8 @@ int main(void)
     
     // Creating the task that is used for outputting messages to serial
     xTaskCreate( 
-        UARTWrite,
-        "UART_write",
+        uart_write,
+        "uart_write",
         configMINIMAL_STACK_SIZE,
         NULL,
         tskIDLE_PRIORITY,
