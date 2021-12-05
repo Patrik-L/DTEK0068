@@ -141,6 +141,7 @@ void uart_write(void* parameter)
     // Infinite loop
     for (;;) 
     { 
+        // Listens for new messages in message_queue and sends them to serial
         if(xQueueReceive(message_queue, (void *) &message_string, 0) == pdTRUE)
         {
             usart0_send_string(message_string);
