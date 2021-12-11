@@ -7,7 +7,6 @@ void adc_init()
 {
     // Create mutex before starting tasks
     g_adc_mutex = xSemaphoreCreateMutex();
-    xSemaphoreGive(g_adc_mutex);
     
     ADC0.CTRLC |= ADC_PRESC_DIV16_gc | ADC_REFSEL_VDDREF_gc;
     
@@ -24,7 +23,7 @@ void adc_init()
 // Task that writes the values from message_queue to serial
 uint16_t read_adc(register8_t muxpos)
 {   
-    xSemaphoreTake(g_adc_mutex, portMAX_DELAY);
+    //xSemaphoreTake(g_adc_mutex, portMAX_DELAY);
     ADC0.MUXPOS = muxpos;
 
     // Start conversion (bit cleared when conversion is done) 
@@ -35,7 +34,7 @@ uint16_t read_adc(register8_t muxpos)
     { 
         ;
     }
-    xSemaphoreGive(g_adc_mutex);
+    //xSemaphoreGive(g_adc_mutex);
     return ADC0.RES;
 }
 
