@@ -10,6 +10,8 @@
         <itemPath>FreeRTOS/Source/portable/ThirdParty/Partner-Supported-Ports/GCC/AVR_Mega0/portmacro.h</itemPath>
       </logicalFolder>
       <itemPath>clock_config.h</itemPath>
+      <itemPath>adc.h</itemPath>
+      <itemPath>lcd.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -27,6 +29,8 @@
         <itemPath>FreeRTOS/Source/portable/MemMang/heap_1.c</itemPath>
       </logicalFolder>
       <itemPath>main.c</itemPath>
+      <itemPath>adc.c</itemPath>
+      <itemPath>lcd.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
