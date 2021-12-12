@@ -28,12 +28,9 @@ void log_value(char *format_string, uint16_t value){
     }
     
     
-   uint8_t final_length = snprintf(NULL,0 , format_string, value);
-    
-   char final_message[final_length+1];
+    char final_message[14];
 
-   sprintf(final_message, format_string, value);
-   //strcat(final_message, " ");
+   snprintf(final_message,14, format_string, value);
    
    usart0_send_string(final_message);
 }

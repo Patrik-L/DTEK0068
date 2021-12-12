@@ -7,8 +7,6 @@
 
 #define LCD_WIDTH 16
 
-char display_text[sizeof(char) * LCD_WIDTH];
-
 char stringToScroll[] = "DTEK0068 Embedded Microprocessor Systems";
 
 void scroll(void* parameter)
@@ -18,7 +16,7 @@ void scroll(void* parameter)
     uint8_t length = strlen(stringToScroll);
     for (;;) 
     {
-        char mutate_string[length];
+        char mutate_string[length+1];
         strcpy(mutate_string, stringToScroll);
         
         if(dir == 1 && offset < length-LCD_WIDTH)

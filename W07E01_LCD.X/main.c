@@ -36,12 +36,11 @@ void log_values(void* parameter)
         uint16_t ldr = read_adc(ADC_MUXPOS_AIN8_gc);
         uint16_t ntc = read_adc(ADC_MUXPOS_AIN9_gc);
         uint16_t pot = read_adc(ADC_MUXPOS_AIN14_gc);
+      
         
-        log_value("LDR: (%d)", ldr);
-        log_value("NTC: (%d)", ntc);
-        log_value("POT: (%d)", pot);
-        log_value("\r\n", 0);
-        
+        log_value("LDR: (%04d)  ", ldr);
+        log_value("NTC: (%04d)  ", ntc);
+        log_value("POT: (%04d)\r\n", pot);        
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         
     }
@@ -68,6 +67,7 @@ int main(void)
     TCB3_init();
     
     // Creating the task that is used for outputting messages to serial
+    
     xTaskCreate( 
         log_values,
         "log_values",
@@ -77,6 +77,7 @@ int main(void)
         NULL
     );
     
+ 
     xTaskCreate( 
     display_values,
     "display_values",
@@ -86,6 +87,7 @@ int main(void)
     NULL
     );
     
+        
     xTaskCreate( 
         scroll,
         "scroll",
@@ -94,7 +96,7 @@ int main(void)
         tskIDLE_PRIORITY,
         NULL
     );
-    
+        
     xTaskCreate( 
         dummy,
         "dummy",
@@ -103,6 +105,7 @@ int main(void)
         tskIDLE_PRIORITY,
         NULL
     );
+    
     
         xTaskCreate( 
         backlight_adjuster,

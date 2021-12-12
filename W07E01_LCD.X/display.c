@@ -20,20 +20,20 @@ void display_values(void* parameter)
         uint16_t ldr_val = read_adc(ADC_MUXPOS_AIN8_gc);
         uint16_t ntc_val = read_adc(ADC_MUXPOS_AIN9_gc);
         uint16_t pot_val = read_adc(ADC_MUXPOS_AIN14_gc);
+        
+        char display_text[16];
 
-        char display_text[sizeof(char) * 16];
-
-        sprintf(display_text, "LDR value: %d", ldr_val);
+        sprintf(display_text, "LDR value: %04d", ldr_val);
         lcd_cursor_set(0,0);
         lcd_write(display_text);
         vTaskDelay(660 / portTICK_PERIOD_MS);
 ;
-        sprintf(display_text, "NTC value: %d", ntc_val);
+        sprintf(display_text, "NTC value: %04d", ntc_val);
         lcd_cursor_set(0,0);
         lcd_write(display_text);
         vTaskDelay(660 / portTICK_PERIOD_MS);
 
-        sprintf(display_text, "POT value: %d", pot_val);
+        sprintf(display_text, "POT value: %04d", pot_val);
         lcd_cursor_set(0,0);
         lcd_write(display_text);
         vTaskDelay(660 / portTICK_PERIOD_MS);

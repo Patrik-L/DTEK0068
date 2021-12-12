@@ -8,7 +8,14 @@ void adc_init()
     // Create mutex before starting tasks
     g_adc_mutex = xSemaphoreCreateMutex();
     
-    ADC0.CTRLC |= ADC_PRESC_DIV16_gc | ADC_REFSEL_VDDREF_gc;
+    VREF.CTRLA |= VREF_ADC0REFSEL_2V5_gc; // Set internal voltage ref to 2.5V
+        //Read LDR value
+    ADC0.CTRLC &= ~(ADC_REFSEL_VDDREF_gc); //Clear REFSEL bits
+    //Voltage reference to internal 2.5V
+    ADC0.CTRLC |= ADC_REFSEL_INTREF_gc;
+        // Set prescaler of 16 
+    ADC0.CTRLC |= ADC_PRESC_DIV16_gc; 
+    ADC0.CTRLA |= ADC_ENABLE_bm;
     
     // potentiometer
     // Set potentiometer as input 
