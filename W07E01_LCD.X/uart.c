@@ -27,10 +27,13 @@ void log_value(char *format_string, uint16_t value){
         }
     }
     
-   char final_message[sizeof(char) * 80];
+    
+   uint8_t final_length = snprintf(NULL,0 , format_string, value);
+    
+   char final_message[final_length+1];
 
    sprintf(final_message, format_string, value);
-   strcat(final_message, " ");
+   //strcat(final_message, " ");
    
    usart0_send_string(final_message);
 }

@@ -52,8 +52,7 @@ void log_values(void* parameter)
   
 int main(void) 
 { 
-
-    
+ 
     adc_init();
     
     // Setting up UART
@@ -88,17 +87,26 @@ int main(void)
     );
     
     xTaskCreate( 
-    scroll,
-    "scroll",
-    configMINIMAL_STACK_SIZE,
-    NULL,
-    tskIDLE_PRIORITY,
-    NULL
+        scroll,
+        "scroll",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        tskIDLE_PRIORITY,
+        NULL
     );
     
     xTaskCreate( 
         dummy,
         "dummy",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        tskIDLE_PRIORITY,
+        NULL
+    );
+    
+        xTaskCreate( 
+        backlight_adjuster,
+        "backlight_adjuster",
         configMINIMAL_STACK_SIZE,
         NULL,
         tskIDLE_PRIORITY,

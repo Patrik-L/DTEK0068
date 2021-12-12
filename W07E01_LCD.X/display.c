@@ -5,7 +5,6 @@
 #include "adc.h"
 #include "lcd.h"
 #include "task.h" 
-//#include "uart.h"
 
 
 void display_values(void* parameter)
@@ -24,9 +23,6 @@ void display_values(void* parameter)
 
         char display_text[sizeof(char) * 16];
 
-
-        //log_value("Hey", 0);
-        
         sprintf(display_text, "LDR value: %d", ldr_val);
         lcd_cursor_set(0,0);
         lcd_write(display_text);

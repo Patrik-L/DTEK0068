@@ -19,23 +19,32 @@ void adc_init()
     ADC0.CTRLA |= ADC_ENABLE_bm;
 }
 
+uint16_t last_value = 0;
 
 // Task that writes the values from message_queue to serial
 uint16_t read_adc(register8_t muxpos)
-{   
-    //xSemaphoreTake(g_adc_mutex, portMAX_DELAY);
-    ADC0.MUXPOS = muxpos;
+{
+    //if( xSemaphoreTake( g_adc_mutex, portMAX_DELAY ) == pdTRUE )
+    //{
+        ADC0.MUXPOS = muxpos;
 
-    // Start conversion (bit cleared when conversion is done) 
-    ADC0.COMMAND = ADC_STCONV_bm;
+        // Start conversion (bit cleared when conversion is done) 
+        ADC0.COMMAND = ADC_STCONV_bm;
 
-    // Waiting for adc to get a reading
-    while (!(ADC0.INTFLAGS & ADC_RESRDY_bm)) 
-    { 
-        ;
-    }
-    //xSemaphoreGive(g_adc_mutex);
-    return ADC0.RES;
+        // Waiting for adc to get a reading
+        while (!(ADC0.INTFLAGS & ADC_RESRDY_bm)) 
+        { 
+            ;
+        }
+        
+        last_value = ADC0.RES;
+        xSemaphoreGive(g_adc_mutex);
+        return last_value;
+    //} else{
+     //  return last_value; 
+    //}
+    
+    
 }
 
 // Changes adc muxpos, sets correct voltage ref and

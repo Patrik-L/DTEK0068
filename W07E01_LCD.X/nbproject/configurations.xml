@@ -15,7 +15,6 @@
       <itemPath>backlight.h</itemPath>
       <itemPath>display.h</itemPath>
       <itemPath>dummy.h</itemPath>
-      <itemPath>main.h</itemPath>
       <itemPath>uart.h</itemPath>
       <itemPath>scroller.h</itemPath>
     </logicalFolder>
