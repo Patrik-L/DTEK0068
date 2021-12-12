@@ -31,7 +31,7 @@ uint16_t last_value = 0;
 // Task that writes the values from message_queue to serial
 uint16_t read_adc(register8_t muxpos)
 {
-    //if( xSemaphoreTake( g_adc_mutex, portMAX_DELAY ) == pdTRUE )
+   // if( xSemaphoreTake( g_adc_mutex, 100 ) == pdTRUE )
     //{
         ADC0.MUXPOS = muxpos;
 
@@ -45,11 +45,11 @@ uint16_t read_adc(register8_t muxpos)
         }
         
         last_value = ADC0.RES;
-        xSemaphoreGive(g_adc_mutex);
+     //   xSemaphoreGive(g_adc_mutex);
         return last_value;
-    //} else{
-     //  return last_value; 
-    //}
+   // } else{
+    //  return last_value; 
+   //}
     
     
 }

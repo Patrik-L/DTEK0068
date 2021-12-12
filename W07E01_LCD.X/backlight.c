@@ -5,7 +5,7 @@
 #include "adc.h"
 #include "uart.h"
 #include "timers.h"
-
+#include "task.h"
 
 uint16_t last_pot;
 TimerHandle_t backlight_time;
@@ -67,65 +67,37 @@ void backlight_init()
 void backlight_adjuster(void *param)
 {
     vTaskDelay(200 / portTICK_PERIOD_MS);
+    uint8_t tick_count = 0;
+    uint16_t last_pot = 0;
+    uint16_t display_brightness = 0xFFFF;
     
-    backlight_time = xTimerCreate
-      ( /* Just a text name, not used by the RTOS
-        kernel. */
-        "Backlight",
-        /* The timer period in ticks, must be
-        greater than 0. */
-        100,
-        /* The timers will auto-reload themselves
-        when they expire. */
-        pdTRUE,
-        /* The ID is used to store a count of the
-        number of times the timer has expired, which
-        is initialised to 0. */
-        ( void * ) 3,
-        /* Each timer calls the same callback when
-        it expires. */
-        backlight_timer_callback);
-    TimerHandle_t timeout_time = xTimerCreate
-      ( /* Just a text name, not used by the RTOS
-        kernel. */
-        "timeout",
-        /* The timer period in ticks, must be
-        greater than 0. */
-        10000,
-        /* The timers will auto-reload themselves
-        when they expire. */
-        pdFALSE,
-        /* The ID is used to store a count of the
-        number of times the timer has expired, which
-        is initialised to 0. */
-        ( void * ) 4,
-        /* Each timer calls the same callback when
-        it expires. */
-        timeout_timer_callback);
-    xTimerStart(backlight_time, 0);
-    
-    vTaskDelay(200);
     for(;;)
     {
         uint16_t pot = read_adc(ADC_MUXPOS_AIN14_gc);
-        if(last_pot == pot)
-        {
-            if(xTimerIsTimerActive(timeout_time) == pdFALSE)
-            {
-                xTimerStart(timeout_time, 0);
-            }
+        
+        if((last_pot <= pot+50 && last_pot >= pot-50)){
+            tick_count += 1;
+        } else {
+            tick_count = 0;
         }
-        else{
-            if(xTimerIsTimerActive(backlight_time) == pdFALSE)
-            {
-                xTimerStart(backlight_time, 0);
-            }
-            if(xTimerIsTimerActive(timeout_time) == pdTRUE)
-            {
-                xTimerStop(timeout_time,0);
-            }
-            last_pot = pot;
+        
+        if(tick_count > 100){
+            tick_count = 100;
         }
+        
+        last_pot = pot;
+        
+        
+        if(tick_count >= 100){
+            display_brightness = 0;
+        } else {
+            display_brightness = read_adc(ADC_MUXPOS_AIN8_gc)*60;
+        }
+        
+        //log_value("TIK: %04d\r\n", tick_count);
+        
+        TCB3.CCMP = display_brightness;
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
