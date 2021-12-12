@@ -22,6 +22,7 @@
 #include "lcd.h"
 #include "backlight.h"
 #include "scroller.h"
+#include "dummy.h"
 
 // Task that writes the values from message_queue to serial
 void log_values(void* parameter)
@@ -93,6 +94,15 @@ int main(void)
     NULL,
     tskIDLE_PRIORITY,
     NULL
+    );
+    
+    xTaskCreate( 
+        dummy,
+        "dummy",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        tskIDLE_PRIORITY,
+        NULL
     );
 
     // Start the scheduler 

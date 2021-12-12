@@ -4,15 +4,12 @@
 #include "FreeRTOS.h" 
 #include <string.h>
 #include "task.h"
-#
 
+#define LCD_WIDTH 16
 
-char display_text[sizeof(char) * 16];
+char display_text[sizeof(char) * LCD_WIDTH];
 
-
-char *clearRow = "                ";
-
-char *stringToScroll = "DTEK0068";
+char stringToScroll[] = "DTEK0068 Embedded Microprocessor Systems";
 
 void scroll(void* parameter)
 {
@@ -21,12 +18,15 @@ void scroll(void* parameter)
     uint8_t length = strlen(stringToScroll);
     for (;;) 
     {
-        if(dir == 1 && offset < length)
+        char mutate_string[length];
+        strcpy(mutate_string, stringToScroll);
+        
+        if(dir == 1 && offset < length-LCD_WIDTH)
         {
             offset += 1;
         } else if (dir == 0 && offset > 0 ){
             offset -= 1;
-        } else if (dir == 1 && offset >= length){
+        } else if (dir == 1 && offset >= length-LCD_WIDTH){
             dir = 0;
             offset -= 1;
         } else if (dir == 0 && offset <= 0){
@@ -34,16 +34,11 @@ void scroll(void* parameter)
             offset += 1;
         }
         
-        
-        
         lcd_cursor_set(1,0);
-        lcd_write(clearRow);
         
-        lcd_cursor_set(1,offset);
+        mutate_string[offset + LCD_WIDTH] = '\0';
         
-        
-        
-        lcd_write(stringToScroll);
+        lcd_write(mutate_string + offset);
         vTaskDelay(200 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); 
