@@ -13,9 +13,6 @@
 #include "FreeRTOS.h" 
 #include "clock_config.h" 
 #include "task.h" 
-#include"queue.h"
-#include <string.h>
-#include <stdio.h>
 #include "adc.h"
 #include "uart.h"
 #include "display.h"
@@ -23,37 +20,9 @@
 #include "backlight.h"
 #include "scroller.h"
 #include "dummy.h"
-
-// Task that writes the values from message_queue to serial
-void log_values(void* parameter)
-{
-    // start-up delay
-    vTaskDelay(200 / portTICK_PERIOD_MS);
-    
-    // Infinite loop
-    for (;;) 
-    { 
-        uint16_t ldr = read_adc(ADC_MUXPOS_AIN8_gc);
-        uint16_t ntc = read_adc(ADC_MUXPOS_AIN9_gc);
-        uint16_t pot = read_adc(ADC_MUXPOS_AIN14_gc);
-      
-        
-        log_value("LDR: (%04d)  ", ldr);
-        log_value("NTC: (%04d)  ", ntc);
-        log_value("POT: (%04d)\r\n", pot);        
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        
-    }
-    // vTaskDelete() call just-in-case 
-    vTaskDelete(NULL); 
-}
-  
   
 int main(void) 
 { 
- 
-    adc_init();
-    
     // Setting up UART
     // Taken  from microchip documentation
     PORTA.DIR &= ~PIN1_bm;
@@ -62,11 +31,11 @@ int main(void)
     USART0.CTRLB |= USART_TXEN_bm;
     USART0.CTRLB |= USART_RXEN_bm;
     
-    
+    adc_init();
     backlight_init();
     TCB3_init();
     
-    // Creating the task that is used for outputting messages to serial
+    // Starting the tasks
     
     xTaskCreate( 
         log_values,
@@ -102,12 +71,13 @@ int main(void)
         "dummy",
         configMINIMAL_STACK_SIZE,
         NULL,
-        tskIDLE_PRIORITY,
+        // Max possible priority
+        configMAX_PRIORITIES - 1,
         NULL
     );
     
     
-        xTaskCreate( 
+    xTaskCreate( 
         backlight_adjuster,
         "backlight_adjuster",
         configMINIMAL_STACK_SIZE,

@@ -14,6 +14,7 @@
 ((float)(F_CPU * 64 / (16 * (float)BAUD_RATE)) + 0.5)
 
 void log_value(char *format_string, uint16_t value);
+void log_values(void* parameter);
 
 #endif	/* UART_H */
 

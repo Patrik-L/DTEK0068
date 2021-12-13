@@ -23,21 +23,25 @@ void display_values(void* parameter)
 
         char display_text[16];
 
+        // Printing LDR value to display
         snprintf(display_text, 16, "LDR value: %04d", ldr_val);
         lcd_cursor_set(0,0);
         lcd_write(display_text);
         vTaskDelay(660 / portTICK_PERIOD_MS);
-;
+
+        // Printing NTC value to display
         snprintf(display_text, 16, "NTC value: %04d", ntc_val);
         lcd_cursor_set(0,0);
         lcd_write(display_text);
         vTaskDelay(660 / portTICK_PERIOD_MS);
 
+        // Printing NTC value to display
         snprintf(display_text, 16, "POT value: %04d", pot_val);
         lcd_cursor_set(0,0);
         lcd_write(display_text);
         vTaskDelay(660 / portTICK_PERIOD_MS);
     }
     
+    // Just in case
     vTaskDelete(NULL); 
 }

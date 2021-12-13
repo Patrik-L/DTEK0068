@@ -16,24 +16,34 @@ void scroll(void* parameter)
     uint8_t length = strlen(stringToScroll);
     for (;;) 
     {
+        // Adding 1 to length to accommodate null terminator.
         char mutate_string[length+1];
+        // We don't wan't to mangle our original string.
         strcpy(mutate_string, stringToScroll);
         
+        // Moving an the offset index back and forth
+        // between 0 and length-lcd_width.
         if(dir == 1 && offset < length-LCD_WIDTH)
         {
             offset += 1;
-        } else if (dir == 0 && offset > 0 ){
+        } else if (dir == 0 && offset > 0 )
+        {
             offset -= 1;
-        } else if (dir == 1 && offset >= length-LCD_WIDTH){
+        } else if (dir == 1 && offset >= length-LCD_WIDTH)
+        {
             dir = 0;
             offset -= 1;
-        } else if (dir == 0 && offset <= 0){
+        } else if (dir == 0 && offset <= 0)
+        {
             dir = 1;
             offset += 1;
         }
         
+        // We want to write at the bottom line
         lcd_cursor_set(1,0);
         
+        // Inject a null terminator at lcd_width so that we don't write
+        // too much to the lcd.
         mutate_string[offset + LCD_WIDTH] = '\0';
         
         lcd_write(mutate_string + offset);
